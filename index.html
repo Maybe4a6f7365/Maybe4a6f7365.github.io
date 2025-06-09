@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jose M. Matas - Cybersecurity Terminal</title>
+    
+    <!-- Basic Security Headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #00ff41;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            cursor: text;
+            font-size: clamp(0.85rem, 1.5vw, 1rem);
+        }
+
+        .terminal-container {
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #111111 100%);
+            position: relative;
+            min-height: 100vh;
+        }
+
+        /* Matrix-style background effect */
+        .matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.03;
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
+        }
+
+        .matrix-column {
+            position: absolute;
+            top: -100%;
+            color: #00ff41;
+            font-size: clamp(8px, 1.2vw, 14px);
+            line-height: 1.2;
+            animation: matrix-fall linear infinite;
+        }
+
+        @keyframes matrix-fall {
+            0% {
+                top: -100%;
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                top: 100%;
+                opacity: 0;
+            }
+        }
+
+        /* Terminal Header */
+        .terminal-header {
+            display: flex;
+            align-items: center;
+            padding: clamp(0.5rem, 2vw, 1rem) clamp(0.5rem, 2vw, 2rem);
+            background: rgba(0, 255, 65, 0.05);
+            border-bottom: clamp(1px, 0.2vw, 2px) solid #00ff41;
+            z-index: 10;
+            position: relative;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .terminal-dots {
+            display: flex;
+            gap: clamp(0.3rem, 1vw, 0.5rem);
+            margin-right: clamp(0.5rem, 2vw, 1rem);
+        }
+
+        .dot {
+            width: clamp(8px, 1.5vw, 14px);
+            height: clamp(8px, 1.5vw, 14px);
+            border-radius: 50%;
+        }
+
+        .dot.red { background: #ff5f56; }
+        .dot.yellow { background: #ffbd2e; }
+        .dot.green { background: #27ca3f; }
+
+        .terminal-title {
+            color: #00d4ff;
+            font-weight: 600;
+            font-size: clamp(0.8rem, 2vw, 1.1rem);
+        }
+
+        .terminal-info {
+            margin-left: auto;
+            color: #666;
+            font-size: clamp(0.7rem, 1.5vw, 0.9rem);
+        }
+
+        /* Terminal Body */
+        .terminal-body {
+            flex: 1;
+            padding: clamp(0.5rem, 2vw, 2rem);
+            overflow-y: auto;
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 0;
+        }
+
+        .output-container {
+            flex: 1;
+            margin-bottom: clamp(0.5rem, 2vw, 1rem);
+        }
+
+        .terminal-line {
+            margin: clamp(0.3rem, 1vw, 0.5rem) 0;
+            line-height: clamp(1.4, 2vw, 1.6);
+            opacity: 0;
+            animation: fadeInUp 0.3s ease forwards;
+        }
+
+        .terminal-line.instant {
+            opacity: 1;
+            animation: none;
+        }
+
+        .prompt {
+            color: #00d4ff;
+            font-weight: 600;
+        }
+
+        .command {
+            color: #ffffff;
+            margin-left: 0.5rem;
+        }
+
+        .output {
+            color: #cccccc;
+            margin-left: clamp(0.5rem, 2vw, 2rem);
+        }
+
+        .success {
+            color: #00ff41;
+            margin-left: clamp(0.5rem, 2vw, 2rem);
+        }
+
+        .error {
+            color: #ff4444;
+            margin-left: clamp(0.5rem, 2vw, 2rem);
+        }
+
+        .warning {
+            color: #ffaa00;
+            margin-left: clamp(0.5rem, 2vw, 2rem);
+        }
+
+        .info {
+            color: #00d4ff;
+            margin-left: clamp(0.5rem, 2vw, 2rem);
+        }
+
+        /* Input area */
+        .input-container {
+            display: flex;
+            align-items: center;
+            border-top: clamp(1px, 0.1vw, 2px) solid rgba(0, 255, 65, 0.2);
+            padding-top: clamp(0.5rem, 2vw, 1rem);
+        }
+
+        .input-prompt {
+            color: #00d4ff;
+            font-weight: 600;
+            margin-right: clamp(0.3rem, 1vw, 0.5rem);
+            font-size: clamp(0.8rem, 1.8vw, 1rem);
+        }
+
+        .terminal-input {
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-family: inherit;
+            font-size: clamp(0.8rem, 1.8vw, 1rem);
+            outline: none;
+            flex: 1;
+            padding: clamp(0.3rem, 1vw, 0.5rem);
+        }
+
+        .cursor {
+            background: #00ff41;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        /* Content sections styling */
+        .section-header {
+            color: #00ff41;
+            font-size: clamp(1rem, 2.5vw, 1.3rem);
+            font-weight: 600;
+            margin: clamp(0.5rem, 2vw, 1rem) 0 clamp(0.3rem, 1vw, 0.5rem) clamp(0.5rem, 2vw, 2rem);
+            text-decoration: underline;
+        }
+
+        .skill-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+            gap: clamp(0.8rem, 2.5vw, 1.5rem);
+            margin: clamp(0.5rem, 2vw, 1rem) clamp(0.5rem, 2vw, 2rem);
+        }
+
+        .skill-category {
+            border: clamp(1px, 0.1vw, 2px) solid rgba(0, 255, 65, 0.3);
+            border-radius: clamp(3px, 0.5vw, 6px);
+            padding: clamp(0.8rem, 2.5vw, 1.2rem);
+            background: rgba(0, 255, 65, 0.02);
+        }
+
+        .skill-category h4 {
+            color: #00d4ff;
+            margin-bottom: clamp(0.3rem, 1vw, 0.5rem);
+            font-size: clamp(0.9rem, 2vw, 1.1rem);
+        }
+
+        .skill-list {
+            list-style: none;
+            padding-left: clamp(1.2rem, 3vw, 1.8rem);
+        }
+
+        .skill-list li {
+            color: #cccccc;
+            margin: clamp(0.2rem, 0.8vw, 0.4rem) 0;
+            position: relative;
+            font-size: clamp(0.8rem, 1.6vw, 0.95rem);
+        }
+
+        .skill-list li::before {
+            content: '▶';
+            color: #00ff41;
+            position: absolute;
+            left: clamp(-1rem, -2.5vw, -1.5rem);
+            top: 0;
+            width: clamp(0.8rem, 2vw, 1.2rem);
+        }
+
+        .skill-list a {
+            color: #00d4ff;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .skill-list a:hover {
+            color: #00ff41;
+        }
+
+        .project-card {
+            border: clamp(1px, 0.1vw, 2px) solid rgba(0, 255, 65, 0.3);
+            border-radius: clamp(3px, 0.5vw, 6px);
+            padding: clamp(0.8rem, 2.5vw, 1.2rem);
+            margin: clamp(0.5rem, 2vw, 1rem) clamp(0.5rem, 2vw, 2rem);
+            background: rgba(0, 255, 65, 0.02);
+        }
+
+        .project-title {
+            color: #00ff41;
+            font-size: clamp(1rem, 2.2vw, 1.2rem);
+            margin-bottom: clamp(0.3rem, 1vw, 0.5rem);
+        }
+
+        .project-tech {
+            color: #ffaa00;
+            font-size: clamp(0.8rem, 1.6vw, 0.95rem);
+            margin-bottom: clamp(0.3rem, 1vw, 0.5rem);
+        }
+
+        .project-description {
+            color: #cccccc;
+            margin-bottom: clamp(0.8rem, 2vw, 1rem);
+            line-height: clamp(1.4, 1.8vw, 1.6);
+            font-size: clamp(0.85rem, 1.6vw, 0.95rem);
+        }
+
+        .project-links {
+            display: flex;
+            gap: clamp(0.5rem, 1.5vw, 1rem);
+            flex-wrap: wrap;
+        }
+
+        .project-link {
+            color: #00d4ff;
+            text-decoration: none;
+            border: clamp(1px, 0.1vw, 2px) solid #00d4ff;
+            padding: clamp(0.2rem, 1vw, 0.4rem) clamp(0.5rem, 1.5vw, 0.8rem);
+            border-radius: clamp(2px, 0.3vw, 4px);
+            font-size: clamp(0.8rem, 1.6vw, 0.9rem);
+            transition: all 0.3s ease;
+        }
+
+        .project-link:hover {
+            background: #00d4ff;
+            color: #000;
+        }
+
+        .timeline-item {
+            border-left: clamp(2px, 0.3vw, 3px) solid #00ff41;
+            padding-left: clamp(0.8rem, 2vw, 1.2rem);
+            margin: clamp(0.5rem, 2vw, 1rem) clamp(0.5rem, 2vw, 2rem) clamp(1rem, 3vw, 2rem) clamp(0.5rem, 2vw, 2rem);
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: clamp(-4px, -0.4vw, -6px);
+            top: 0;
+            width: clamp(6px, 1vw, 10px);
+            height: clamp(6px, 1vw, 10px);
+            background: #00ff41;
+            border-radius: 50%;
+        }
+
+        .timeline-date {
+            color: #ffaa00;
+            font-size: clamp(0.8rem, 1.6vw, 0.95rem);
+            margin-bottom: clamp(0.2rem, 0.8vw, 0.4rem);
+        }
+
+        .timeline-title {
+            color: #00ff41;
+            font-size: clamp(1rem, 2.2vw, 1.2rem);
+            margin-bottom: clamp(0.2rem, 0.8vw, 0.4rem);
+        }
+
+        .timeline-company {
+            color: #00d4ff;
+            margin-bottom: clamp(0.3rem, 1vw, 0.5rem);
+            font-size: clamp(0.85rem, 1.7vw, 1rem);
+        }
+
+        .timeline-description {
+            color: #cccccc;
+            line-height: clamp(1.4, 1.8vw, 1.6);
+            font-size: clamp(0.85rem, 1.6vw, 0.95rem);
+        }
+
+        /* Help and command styling */
+        .help-command {
+            color: #00d4ff;
+            font-weight: 500;
+        }
+
+        .help-description {
+            color: #cccccc;
+            margin-left: 2rem;
+        }
+
+        /* Auto-completion */
+        .autocomplete-suggestions {
+            background: rgba(0, 255, 65, 0.1);
+            border: clamp(1px, 0.1vw, 2px) solid rgba(0, 255, 65, 0.3);
+            border-radius: clamp(3px, 0.5vw, 6px);
+            margin-top: clamp(0.3rem, 1vw, 0.5rem);
+            padding: clamp(0.3rem, 1vw, 0.5rem);
+            display: none;
+        }
+
+        .suggestion {
+            color: #00d4ff;
+            padding: clamp(0.15rem, 0.5vw, 0.25rem) clamp(0.3rem, 1vw, 0.5rem);
+            cursor: pointer;
+            border-radius: clamp(2px, 0.3vw, 3px);
+            font-size: clamp(0.8rem, 1.6vw, 0.9rem);
+        }
+
+        .suggestion:hover,
+        .suggestion.selected {
+            background: rgba(0, 212, 255, 0.2);
+        }
+
+        /* Scrollbar styling */
+        .terminal-body::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .terminal-body::-webkit-scrollbar-track {
+            background: rgba(0, 255, 65, 0.1);
+        }
+
+        .terminal-body::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 65, 0.5);
+            border-radius: 4px;
+        }
+
+        .terminal-body::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 255, 65, 0.7);
+        }
+
+        /* Mobile specific fixes */
+        @media (max-width: 480px) {
+            .terminal-header {
+                padding: 0.5rem 0.25rem;
+                flex-direction: column;
+                gap: 0.25rem;
+            }
+            
+            .terminal-body {
+                padding: 0.25rem;
+            }
+            
+            .terminal-title {
+                font-size: 0.9rem;
+            }
+            
+            .terminal-info {
+                font-size: 0.7rem;
+            }
+            
+            .skill-grid {
+                margin: 0.25rem 0;
+                gap: 0.5rem;
+            }
+            
+            .project-card,
+            .timeline-item {
+                margin: 0.25rem 0;
+                padding: 0.5rem;
+            }
+        }
+        
+        /* Consolidated media queries */
+        @media (max-width: 768px) {
+            .terminal-container {
+                font-size: clamp(0.75rem, 3.5vw, 0.9rem);
+            }
+            
+            .terminal-header {
+                flex-direction: column;
+                gap: 0.5rem;
+                text-align: center;
+                padding: 0.5rem;
+            }
+            
+            .terminal-info {
+                margin-left: 0;
+                font-size: clamp(0.7rem, 2.5vw, 0.8rem);
+            }
+            
+            .terminal-body {
+                padding: 0.5rem;
+            }
+            
+            .skill-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                margin: 0.5rem 0;
+            }
+            
+            .project-links {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .terminal-title {
+                font-size: clamp(0.9rem, 3vw, 1.2rem);
+            }
+            
+            .project-card,
+            .timeline-item {
+                margin-left: 0;
+                margin-right: 0;
+            }
+            
+            .section-header {
+                margin-left: 0;
+            }
+            
+            .skill-list {
+                padding-left: 1rem;
+            }
+            
+            .skill-list li::before {
+                left: -0.8rem;
+                width: 0.8rem;
+            }
+        }
+
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .skill-grid {
+                grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+            }
+        }
+
+        @media (min-width: 1025px) {
+            .skill-grid {
+                grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            }
+        }
+
+        @media (min-width: 1920px) {
+            .skill-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media (max-height: 600px) and (orientation: landscape) {
+            .terminal-header {
+                padding: 0.5rem;
+            }
+            
+            .terminal-body {
+                padding: 0.5rem;
+            }
+            
+            .terminal-line {
+                margin: clamp(0.2rem, 0.5vw, 0.3rem) 0;
+            }
+            
+            .skill-grid,
+            .project-card,
+            .timeline-item {
+                margin: 0.5rem 0;
+            }
+        }
+
+        /* Animation for typing effect */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Status indicators */
+        .status-online {
+            color: #00ff41;
+        }
+
+        /* ASCII Art styling */
+        .ascii-art {
+            color: #00ff41;
+            font-size: 0.8rem;
+            line-height: 1;
+            margin: 1rem 2rem;
+            white-space: pre;
+        }
+
+        /* Enhanced animations */
+        @keyframes pulse {
+            0%, 100% { 
+                opacity: 1; 
+                text-shadow: 0 0 10px currentColor;
+            }
+            50% { 
+                opacity: 0.7; 
+                text-shadow: 0 0 20px currentColor, 0 0 30px currentColor;
+            }
+        }
+
+        @keyframes glow {
+            0%, 100% { 
+                text-shadow: 0 0 5px currentColor, 0 0 10px currentColor;
+            }
+            50% { 
+                text-shadow: 0 0 15px currentColor, 0 0 25px currentColor, 0 0 35px currentColor;
+            }
+        }
+
+        /* Enhanced matrix effect */
+        .matrix-column {
+            text-shadow: 0 0 5px #00ff41;
+        }
+
+        /* Terminal link styling */
+        .terminal-link {
+            color: #00d4ff;
+            text-decoration: underline;
+            transition: all 0.3s ease;
+        }
+
+        .terminal-link:hover {
+            color: #00ff41;
+            text-shadow: 0 0 5px currentColor;
+        }
+
+        .terminal-link:visited {
+            color: #9370db;
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal-container">
+        <!-- Matrix background -->
+        <div class="matrix-bg" id="matrixBg"></div>
+
+        <!-- Terminal Header -->
+        <div class="terminal-header">
+            <div class="terminal-dots">
+                <div class="dot red"></div>
+                <div class="dot yellow"></div>
+                <div class="dot green"></div>
+            </div>
+            <div class="terminal-title">jose@not4a6f7365:~$ Interactive Portfolio</div>
+            <div class="terminal-info">
+                <span class="status-online">● ONLINE</span> | 
+                Type 'help' for commands
+            </div>
+        </div>
+
+        <!-- Terminal Body -->
+        <div class="terminal-body" id="terminalBody">
+            <div class="output-container" id="outputContainer">
+                <!-- Initial content will be populated by JavaScript -->
+            </div>
+
+            <!-- Input Container -->
+            <div class="input-container">
+                <span class="input-prompt">jose@not4a6f7365:~$</span>
+                <input type="text" class="terminal-input" id="terminalInput" autocomplete="off" autofocus>
+                <div class="autocomplete-suggestions" id="autocompleteSuggestions"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        'use strict';
+        
+        // Basic input sanitization
+        function sanitizeInput(input) {
+            if (typeof input !== 'string') return '';
+            return input.trim().substring(0, 100);
+        }
+        
+        // Basic HTML escaping
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Simple URL linkification
+        function linkifyUrls(text) {
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            return text.replace(urlRegex, (url) => {
+                return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="terminal-link">${url}</a>`;
+            });
+        }
+        
+        // Terminal data and commands
+        const terminalData = {
+            commands: {
+                help: {
+                    description: 'Show available commands',
+                    execute: showHelp
+                },
+                skills: {
+                    description: 'List technical skills and certifications',
+                    execute: showSkills
+                },
+                experience: {
+                    description: 'Show professional experience',
+                    execute: showExperience
+                },
+                projects: {
+                    description: 'Display featured projects',
+                    execute: showProjects
+                },
+                contact: {
+                    description: 'Show contact information',
+                    execute: showContact
+                },
+                certifications: {
+                    description: 'List security certifications',
+                    execute: showCertifications
+                },
+                whoami: {
+                    description: 'Display current user information',
+                    execute: showWhoami
+                },
+                clear: {
+                    description: 'Clear the terminal screen',
+                    execute: clearTerminal
+                },
+                // Hidden easter eggs
+                'nmap': {
+                    description: 'Hidden command',
+                    execute: showNmap
+                }
+            },
+            
+            skillsData: {
+                "Certifications & Credentials": [
+                    "ISC2 Certified in Cybersecurity (2023-2026)",
+                    "MITRE ATT&CK Defender™ (MAD) Certified",
+                    "TryHackMe Offensive Pentesting Path",
+                    "CompTIA Pentest+ Learning Path",
+                    "Jr Penetration Tester Path",
+                    "Identifying Web Attacks Through Logs",
+                    "ISC2 Candidate"
+                ],
+                "Penetration Testing & Assessment": [
+                    "Web Application Security Testing",
+                    "Network Security Assessment", 
+                    "Active Directory Penetration Testing",
+                    "WiFi Security Audits",
+                    "API Security Testing",
+                    "PCI DSS Compliance Testing",
+                    "Vulnerability Assessment"
+                ],
+                "Security Tools & Frameworks": [
+                    "Burp Suite Professional",
+                    "Metasploit Framework",
+                    "BloodHound",
+                    "HashCat",
+                    "Responder",
+                    "netexec",
+                    "Nessus Vulnerability Scanner",
+                    "Wireshark Network Analysis",
+                    "Python Security Tools & Scripting"
+                ],
+                "Scripting & Automation": [
+                    "PowerShell Security Automation", 
+                    "Bash Scripting & Shell Programming",
+                    "JavaScript & Web Technologies",
+                    "Security Process Automation",
+                    "Custom Python PoCs and automation scripts"
+                ],
+                "Professional Specializations": [
+                    "Technical Expert for BSZ & CC Certifications",
+                    "ASV Process Management",
+                    "Technical Writing & Documentation",
+                    "CTF Competition & Training",
+                    "Security Awareness & Education",
+                    "LiveHacking Demonstrations"
+                ]
+            },
+
+            experienceData: [
+                {
+                    date: "June 2023 - May 2025",
+                    title: "Cyber Security Consultant",
+                    company: "SRC Security Research and Consulting GmbH, Germany",
+                    description: "Served as Technical Expert in BSZ and CC certification processes. Specialized in extensive API testing, developing custom testing tools and updating existing frameworks. Oversaw ASV (Approved Scanning Vendor) processes and conducted comprehensive penetration testing in PCI DSS environments. Performed Active Directory penetration testing and WiFi security audits for diverse client environments."
+                },
+                {
+                    date: "June 2022 - May 2023",
+                    title: "Penetration Tester",
+                    company: "it.sec GmbH, Remote",
+                    description: "Conducted comprehensive penetration testing services with expertise in Nessus vulnerability scanning and Web Application Security testing. Specialized in identifying security weaknesses and providing actionable remediation recommendations to clients."
+                },
+                {
+                    date: "January 2021 - April 2022",
+                    title: "Penetration Tester (Freelance)",
+                    company: "HackerOne, Remote",
+                    description: "Freelance penetration tester specializing in Web Application Security and Ethical Hacking. Contributed to bug bounty programs and vulnerability disclosure processes, helping organizations improve their security posture through responsible disclosure."
+                }
+            ],
+
+            projectsData: [
+                {
+                    title: "PwnHub - CTF Collaboration Platform",
+                    tech: "Bash, JavaScript, TCP/IP, Shell Scripting",
+                    description: "A comprehensive CTF collaboration platform written entirely in Bash. Enables teams to work together on capture-the-flag challenges with shared resources, communication tools, and progress tracking functionality.",
+                    links: [
+                        { text: "GitHub Repository", url: "https://github.com/Maybe4a6f7365/PwnHub" }
+                    ]
+                },
+                {
+                    title: "MalwareDetection",
+                    tech: "PowerShell, Digital Forensics, Windows Security",
+                    description: "PowerShell script designed for security triage and hunting for Indicators of Compromise on Windows systems. Provides automated analysis and detection capabilities for incident response teams.",
+                    links: [
+                        { text: "GitHub Repository", url: "https://github.com/Maybe4a6f7365/MalwareDetection" }
+                    ]
+                },
+                {
+                    title: "NahamCon CTF Write-ups",
+                    tech: "Cryptography, Reverse Engineering, Security Research",
+                    description: "Technical write-ups for challenging CTF problems including 'Magic RSA', 'Brain-Melt-2', 'Cryptoclock PRNG', and 'Screenshot of the Encrypted Flag'.",
+                    links: [
+                        { text: "Magic RSA", url: "https://not4a6f7365.medium.com/nahamcon-ctf-2024-magic-rsa-challenge-write-up-18793102e7ee" },
+                        { text: "Brain-Melt-2", url: "https://not4a6f7365.medium.com/nahamcon-ctf-2024-brain-melt-2-challenge-write-up-071435bbb75c" }
+                    ]
+                },
+                {
+                    title: "Follina Vulnerability Research",
+                    tech: "Vulnerability Research, Phishing Analysis",
+                    description: "Published research on the Follina vulnerability and how it simplifies phishing attacks. Technical analysis published through it.sec GmbH.",
+                    links: [
+                        { text: "Research Post", url: "#" }
+                    ]
+                },
+                {
+                    title: "Fastfetch GIF Support",
+                    tech: "C, CMake, Terminal Graphics, System Programming",
+                    description: "Enhanced fork of fastfetch system information tool with animated GIF support. Displays animated GIFs inline in the command line terminal, bringing dynamic visual elements to system fetch tools.",
+                    links: [
+                        { text: "GitHub Repository", url: "https://github.com/Maybe4a6f7365/fastfetch-gif-support" },
+                        { text: "Technical Article", url: "https://not4a6f7365.medium.com/animated-gifs-in-fastfetch-a905e395c765" }
+                    ]
+                },
+                {
+                    title: "Advanced CTF Challenges 2025",
+                    tech: "PRNG Analysis, Cryptography, Forensics",
+                    description: "Latest CTF write-ups covering advanced cryptographic challenges: 'Cryptoclock' - breaking predictable PRNGs with time-based seeds.",
+                    links: [
+                        { text: "Cryptoclock PRNG", url: "https://not4a6f7365.medium.com/ctf-write-up-breaking-cryptoclock-a-predictable-prng-and-the-ticking-time-bomb-seed-631ce555ad2b" },
+                        { text: "Encrypted Flag", url: "https://not4a6f7365.medium.com/nahamconctf2025-the-accidental-screenshot-and-the-encrypted-flag-d838cf6cc5d0" }
+                    ]
+                }
+            ]
+        };
+
+        // Terminal functionality
+        let commandHistory = [];
+        let historyIndex = -1;
+        let currentSuggestionIndex = -1;
+
+        // Initialize terminal
+        function initTerminal() {
+            displayWelcomeMessage();
+            createMatrixBackground();
+            
+            const input = document.getElementById('terminalInput');
+            input.addEventListener('keydown', handleKeyDown);
+            input.addEventListener('input', handleInput);
+            
+            // Focus input when clicking anywhere on terminal
+            document.addEventListener('click', () => {
+                input.focus();
+            });
+            
+            // Pre-fill whoami command
+            setTimeout(() => {
+                input.value = 'whoami';
+                showAutocompleteSuggestions('whoami');
+            }, 2000);
+        }
+
+        function displayWelcomeMessage() {
+            const welcomeMessage = `
+
+================================================================================
+                               JOSE M. MATAS                                     
+                    Penetration Tester & Security Consultant                    
+================================================================================
+
+   Specializations: API Security • PCI DSS Compliance    
+                    Active Directory • WiFi Security • Web Applications         
+
+================================================================================
+
+Welcome to my interactive cybersecurity terminal!
+Type 'help' to see available commands or try the pre-filled command below.
+            `;
+
+            displayOutput(welcomeMessage, 'info', true);
+        }
+
+        function handleKeyDown(event) {
+            const input = event.target;
+            const suggestions = document.getElementById('autocompleteSuggestions');
+
+            switch(event.key) {
+                case 'Enter':
+                    event.preventDefault();
+                    executeCommand(input.value.trim());
+                    break;
+                    
+                case 'ArrowUp':
+                    event.preventDefault();
+                    if (suggestions.style.display === 'block') {
+                        navigateSuggestions(-1);
+                    } else {
+                        navigateHistory(-1);
+                    }
+                    break;
+                    
+                case 'ArrowDown':
+                    event.preventDefault();
+                    if (suggestions.style.display === 'block') {
+                        navigateSuggestions(1);
+                    } else {
+                        navigateHistory(1);
+                    }
+                    break;
+                    
+                case 'Tab':
+                    event.preventDefault();
+                    autocompleteCommand();
+                    break;
+                    
+                case 'Escape':
+                    suggestions.style.display = 'none';
+                    currentSuggestionIndex = -1;
+                    break;
+            }
+        }
+
+        function handleInput(event) {
+            const input = event.target.value;
+            showAutocompleteSuggestions(input);
+        }
+
+        function executeCommand(commandLine) {
+            const sanitizedInput = sanitizeInput(commandLine);
+            
+            // Display the command
+            const commandDiv = document.createElement('div');
+            commandDiv.className = 'terminal-line command instant';
+            commandDiv.textContent = `jose@not4a6f7365:~$ ${sanitizedInput}`;
+            document.getElementById('outputContainer').appendChild(commandDiv);
+            
+            // Add to history
+            if (sanitizedInput && sanitizedInput !== commandHistory[commandHistory.length - 1]) {
+                commandHistory.push(sanitizedInput);
+                if (commandHistory.length > 50) {
+                    commandHistory.shift();
+                }
+            }
+            historyIndex = commandHistory.length;
+            
+            // Parse command
+            const [command, ...args] = sanitizedInput.toLowerCase().split(' ');
+            
+            if (command === '') {
+                return;
+            }
+            
+            // Execute command
+            if (terminalData.commands[command]) {
+                terminalData.commands[command].execute(args);
+            } else {
+                displayOutput(`Command not found: ${escapeHtml(command)}. Type 'help' for available commands.`, 'error');
+            }
+            
+            // Clean up
+            const input = document.getElementById('terminalInput');
+            input.value = '';
+            hideSuggestions();
+            scrollToBottom();
+        }
+
+        function displayOutput(text, type = 'output', instant = false) {
+            const container = document.getElementById('outputContainer');
+            const line = document.createElement('div');
+            line.className = `terminal-line ${type} ${instant ? 'instant' : ''}`;
+            
+            // Convert newlines and linkify URLs
+            const processedText = text.replace(/\n/g, '<br>');
+            line.innerHTML = linkifyUrls(processedText);
+            
+            container.appendChild(line);
+            
+            if (!instant) {
+                setTimeout(() => {
+                    line.style.opacity = '1';
+                }, 50);
+            }
+        }
+
+        function scrollToBottom() {
+            const terminalBody = document.getElementById('terminalBody');
+            setTimeout(() => {
+                terminalBody.scrollTop = terminalBody.scrollHeight;
+            }, 100);
+        }
+
+        // Command implementations
+        function showHelp() {
+            let helpText = "\nAvailable Commands:\n";
+            helpText += "==================\n\n";
+            
+            Object.entries(terminalData.commands).forEach(([cmd, data]) => {
+                // Skip hidden commands
+                if (data.description !== 'Hidden command') {
+                    helpText += `<span class="help-command">${cmd.padEnd(15)}</span> - ${data.description}\n`;
+                }
+            });
+            
+            helpText += "\nTips:\n";
+            helpText += "• Use Tab for autocomplete\n";
+            helpText += "• Use ↑/↓ arrows for command history\n";
+            helpText += "• Type 'clear' to clear the screen\n";
+            
+            displayOutput(helpText, 'info');
+        }
+
+        function showSkills() {
+            displayOutput("\n=== TECHNICAL ARSENAL ===\n", 'section-header');
+            
+            const container = document.getElementById('outputContainer');
+            const skillsHtml = document.createElement('div');
+            skillsHtml.className = 'skill-grid';
+            
+            Object.entries(terminalData.skillsData).forEach(([category, skills]) => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'skill-category';
+                
+                categoryDiv.innerHTML = `
+                    <h4>${category}</h4>
+                    <ul class="skill-list">
+                        ${skills.map(skill => {
+                            // Check if skill contains links (for certifications)
+                            if (category === "Certifications & Credentials") {
+                                const links = {
+                                    "ISC2 Certified in Cybersecurity (2023-2026)": "https://www.credly.com/badges/a54fadee-75ed-4bca-ba53-27c49a3e19da",
+                                    "MITRE ATT&CK Defender™ (MAD) Certified": "https://app.cybrary.it/courses/api/certificate/CC-80a3de66-bbb4-44f9-a032-42b0795918ae/view",
+                                    "TryHackMe Offensive Pentesting Path": "https://tryhackme-certificates.s3-eu-west-1.amazonaws.com/THM-H9CWKVF57Z.png",
+                                    "CompTIA Pentest+ Learning Path": "https://tryhackme-certificates.s3-eu-west-1.amazonaws.com/THM-LQVI1WIUSL.png",
+                                    "Jr Penetration Tester Path": "https://tryhackme-certificates.s3-eu-west-1.amazonaws.com/THM-3JTNJ4EVXA.png",
+                                    "Identifying Web Attacks Through Logs": "https://app.cybrary.it/courses/api/certificate/CC-f0720157-4463-4140-b7d1-bfa54a478acb/view"
+                                };
+                                
+                                if (links[skill]) {
+                                    return `<li><a href="${links[skill]}" target="_blank" rel="noopener noreferrer" class="terminal-link">${skill}</a></li>`;
+                                }
+                            }
+                            return `<li>${skill}</li>`;
+                        }).join('')}
+                    </ul>
+                `;
+                
+                skillsHtml.appendChild(categoryDiv);
+            });
+            
+            container.appendChild(skillsHtml);
+        }
+
+        function showExperience() {
+            displayOutput("\n=== PROFESSIONAL EXPERIENCE ===\n", 'section-header');
+            
+            const container = document.getElementById('outputContainer');
+            
+            terminalData.experienceData.forEach(exp => {
+                const expDiv = document.createElement('div');
+                expDiv.className = 'timeline-item terminal-line';
+                
+                expDiv.innerHTML = `
+                    <div class="timeline-date">${exp.date}</div>
+                    <div class="timeline-title">${exp.title}</div>
+                    <div class="timeline-company">${exp.company}</div>
+                    <div class="timeline-description">${exp.description}</div>
+                `;
+                
+                container.appendChild(expDiv);
+            });
+        }
+
+        function showProjects() {
+            displayOutput("\n=== FEATURED PROJECTS ===\n", 'section-header');
+            
+            const container = document.getElementById('outputContainer');
+            
+            terminalData.projectsData.forEach(project => {
+                const projectDiv = document.createElement('div');
+                projectDiv.className = 'project-card terminal-line';
+                
+                const linksHtml = project.links.map(link => 
+                    `<a href="${link.url}" target="_blank" rel="noopener noreferrer" class="project-link">${link.text}</a>`
+                ).join('');
+                
+                projectDiv.innerHTML = `
+                    <div class="project-title">${project.title}</div>
+                    <div class="project-tech">${project.tech}</div>
+                    <div class="project-description">${project.description}</div>
+                    <div class="project-links">${linksHtml}</div>
+                `;
+                
+                container.appendChild(projectDiv);
+            });
+        }
+
+        function showContact() {
+            displayOutput("\n=== CONTACT INFORMATION ===\n", 'section-header');
+            
+            const contactInfo = `
+📧 Email: not4a6f7365@protonmail.com
+💼 LinkedIn: https://linkedin.com/in/jose-m-matas
+🔗 GitHub: https://github.com/Maybe4a6f7365
+📝 Blog: https://not4a6f7365.medium.com/
+
+Status: Available for consultation
+Response Time: < 24 hours
+            `;
+            
+            displayOutput(contactInfo, 'info');
+        }
+
+        function showCertifications() {
+            displayOutput("\n=== SECURITY CERTIFICATIONS ===\n", 'section-header');
+            
+            const certifications = `
+🏆 ISC2 Certified in Cybersecurity (2023-2026)
+   Certificate ID: 1570818
+   Verification: https://www.credly.com/badges/a54fadee-75ed-4bca-ba53-27c49a3e19da
+
+🛡️  MITRE ATT&CK Defender™ (MAD) Certified
+   Specialization: SOC Assessments
+   Verification: https://app.cybrary.it/courses/api/certificate/CC-80a3de66-bbb4-44f9-a032-42b0795918ae/view
+
+🎯 TryHackMe Offensive Pentesting Path
+   Certificate ID: THM-H9CWKVF57Z
+   Verification: https://tryhackme-certificates.s3-eu-west-1.amazonaws.com/THM-H9CWKVF57Z.png
+
+⚡ CompTIA Pentest+ Learning Path
+   Certificate ID: THM-LQVI1WIUSL
+   Verification: https://tryhackme-certificates.s3-eu-west-1.amazonaws.com/THM-LQVI1WIUSL.png
+
+🔰 Jr Penetration Tester Path
+   Certificate ID: THM-3JTNJ4EVXA
+   Verification: https://tryhackme-certificates.s3-eu-west-1.amazonaws.com/THM-3JTNJ4EVXA.png
+
+🔍 Identifying Web Attacks Through Logs
+   Verification: https://app.cybrary.it/courses/api/certificate/CC-f0720157-4463-4140-b7d1-bfa54a478acb/view
+            `;
+            
+            displayOutput(certifications, 'success');
+        }
+
+        function showWhoami() {
+            const whoamiInfo = `
+Role: <span style="color: #ff0080;">Cyber Security Consultant & Penetration Tester</span>
+Specialization: <span style="color: #00ff41;">API Security • PCI DSS Compliance<br>Active Directory • WiFi Security • Web Applications</span>
+
+<span style="color: #00d4ff;">Expertise:</span>
+<span style="color: #00ff41;">•</span> Finding and reporting vulnerabilities in systems and networks
+<span style="color: #00ff41;">•</span> Technical Expert in BSZ and CC certification processes
+<span style="color: #00ff41;">•</span> Extensive API testing and custom tool development
+<span style="color: #00ff41;">•</span> ASV (Approved Scanning Vendor) process management
+<span style="color: #00ff41;">•</span> Comprehensive penetration testing in PCI DSS environments
+<span style="color: #00ff41;">•</span> Active Directory penetration testing for enterprise environments
+<span style="color: #00ff41;">•</span> WiFi security audits
+<span style="color: #00ff41;">•</span> LiveHacking Demos
+
+Problem-solver passionate about identifying and addressing security weaknesses
+while contributing to the cybersecurity community through CTF competitions and
+technical publications.
+
+<span style="color: #00d4ff;">Current Focus:</span>
+<span style="color: #00ff41;">•</span> Vulnerability Assessment & Penetration Testing
+<span style="color: #00ff41;">•</span> API Security Testing
+<span style="color: #00ff41;">•</span> Security Certification Processes
+<span style="color: #00ff41;">•</span> CTF Competitions & Security Research
+            `;
+            
+            displayOutput(whoamiInfo, 'info');
+        }
+
+        function clearTerminal() {
+            document.getElementById('outputContainer').innerHTML = '';
+            // displayWelcomeMessage(); // Removed to prevent re-displaying the welcome text on clear
+        }
+
+        function showNmap() {
+            displayOutput("\nStarting Nmap scan on portfolio services...\n", 'info');
+            
+            setTimeout(() => {
+                const nmapOutput = `
+Nmap scan report for jose-matas-portfolio.local
+Host is up (0.001s latency).
+
+PORT     STATE SERVICE
+22/tcp   open  ssh           (Skills & Experience)
+80/tcp   open  http          (Projects & Portfolio)
+443/tcp  open  https         (Contact & Consultation)
+3389/tcp open  rdp           (Certifications)
+8080/tcp open  http-proxy    (Blog & Articles)
+
+Service detection performed. Please report any incorrect results.
+Nmap done: 1 IP address (1 host up) scanned in 0.12 seconds
+                `;
+                displayOutput(nmapOutput, 'success');
+            }, 1500);
+        }
+
+        function showAutocompleteSuggestions(input) {
+            const sanitizedInput = sanitizeInput(input);
+            const suggestions = document.getElementById('autocompleteSuggestions');
+            const commands = Object.keys(terminalData.commands).filter(cmd => 
+                terminalData.commands[cmd].description !== 'Hidden command'
+            );
+            const matches = commands.filter(cmd => cmd.startsWith(sanitizedInput.toLowerCase()));
+            
+            if (sanitizedInput.length > 0 && matches.length > 0) {
+                suggestions.innerHTML = '';
+                
+                matches.forEach((match) => {
+                    const suggestionDiv = document.createElement('div');
+                    suggestionDiv.className = 'suggestion';
+                    suggestionDiv.textContent = match;
+                    suggestionDiv.dataset.command = match;
+                    
+                    suggestionDiv.addEventListener('click', () => {
+                        const input = document.getElementById('terminalInput');
+                        input.value = match;
+                        hideSuggestions();
+                    });
+                    
+                    suggestions.appendChild(suggestionDiv);
+                });
+                
+                suggestions.style.display = 'block';
+                currentSuggestionIndex = -1;
+            } else {
+                hideSuggestions();
+            }
+        }
+
+        function navigateSuggestions(direction) {
+            const suggestions = document.getElementById('autocompleteSuggestions');
+            const suggestionElements = suggestions.querySelectorAll('.suggestion');
+            
+            if (suggestionElements.length === 0) return;
+            
+            // Remove previous selection
+            if (currentSuggestionIndex >= 0) {
+                suggestionElements[currentSuggestionIndex].classList.remove('selected');
+            }
+            
+            // Update index
+            currentSuggestionIndex += direction;
+            if (currentSuggestionIndex < 0) currentSuggestionIndex = suggestionElements.length - 1;
+            if (currentSuggestionIndex >= suggestionElements.length) currentSuggestionIndex = 0;
+            
+            // Add new selection
+            suggestionElements[currentSuggestionIndex].classList.add('selected');
+            
+            // Update input
+            document.getElementById('terminalInput').value = suggestionElements[currentSuggestionIndex].dataset.command;
+        }
+
+        function autocompleteCommand() {
+            const input = document.getElementById('terminalInput');
+            const suggestions = document.getElementById('autocompleteSuggestions');
+            const firstSuggestion = suggestions.querySelector('.suggestion');
+            
+            if (firstSuggestion) {
+                input.value = firstSuggestion.dataset.command;
+                hideSuggestions();
+            }
+        }
+
+        function hideSuggestions() {
+            document.getElementById('autocompleteSuggestions').style.display = 'none';
+            currentSuggestionIndex = -1;
+        }
+
+        function navigateHistory(direction) {
+            if (commandHistory.length === 0) return;
+            
+            historyIndex += direction;
+            if (historyIndex < 0) historyIndex = 0;
+            if (historyIndex >= commandHistory.length) historyIndex = commandHistory.length;
+            
+            const input = document.getElementById('terminalInput');
+            if (historyIndex === commandHistory.length) {
+                input.value = '';
+            } else {
+                input.value = commandHistory[historyIndex];
+            }
+        }
+
+        // Matrix background effect with responsive optimization
+        function createMatrixBackground() {
+            const matrixBg = document.getElementById('matrixBg');
+            const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEF';
+            
+            // Responsive matrix column count based on screen size
+            const screenWidth = window.innerWidth;
+            let columnCount;
+            if (screenWidth < 480) {
+                columnCount = 15; // Fewer columns for small phones
+            } else if (screenWidth < 768) {
+                columnCount = 25; // Medium for tablets
+            } else if (screenWidth < 1024) {
+                columnCount = 35; // More for laptops
+            } else {
+                columnCount = 50; // Full effect for desktops
+            }
+            
+            for (let i = 0; i < columnCount; i++) {
+                const column = document.createElement('div');
+                column.className = 'matrix-column';
+                column.style.left = Math.random() * 100 + '%';
+                column.style.animationDuration = (Math.random() * 10 + 10) + 's';
+                column.style.animationDelay = Math.random() * 5 + 's';
+                
+                // Responsive column length
+                const columnLength = screenWidth < 768 ? 12 : 20;
+                let columnText = '';
+                for (let j = 0; j < columnLength; j++) {
+                    columnText += chars[Math.floor(Math.random() * chars.length)] + '<br>';
+                }
+                column.innerHTML = columnText;
+                
+                matrixBg.appendChild(column);
+            }
+            
+            // Optimized resize handler with debouncing
+            let resizeTimeout;
+            const debouncedResize = () => {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    if (Math.abs(window.innerWidth - screenWidth) > 200) {
+                        matrixBg.innerHTML = '';
+                        createMatrixBackground();
+                    }
+                }, 250);
+            };
+            
+            window.addEventListener('resize', debouncedResize);
+            
+            // Cleanup on page unload
+            window.addEventListener('beforeunload', () => {
+                window.removeEventListener('resize', debouncedResize);
+                clearTimeout(resizeTimeout);
+            });
+        }
+
+        // Simple cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            commandHistory.length = 0;
+        });
+
+        document.addEventListener('DOMContentLoaded', initTerminal);
+    </script>
+</body>
+</html>
