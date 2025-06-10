@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Jose M. Matas - Cybersecurity Terminal</title>
     
     <!-- Basic Security Headers -->
@@ -24,19 +24,25 @@
             color: #00ff41;
             overflow: hidden;
             height: 100vh;
+            height: 100dvh; /* Dynamic viewport height for mobile keyboards */
             width: 100vw;
             cursor: text;
             font-size: clamp(0.85rem, 1.5vw, 1rem);
+            position: fixed; /* Prevent scroll on mobile keyboard */
+            top: 0;
+            left: 0;
         }
 
         .terminal-container {
             height: 100vh;
+            height: 100dvh; /* Dynamic viewport height for mobile keyboards */
             width: 100vw;
             display: flex;
             flex-direction: column;
             background: linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #111111 100%);
             position: relative;
             min-height: 100vh;
+            min-height: 100dvh; /* Dynamic viewport height for mobile keyboards */
         }
 
         /* Matrix-style background effect */
@@ -207,6 +213,10 @@
             outline: none;
             flex: 1;
             padding: clamp(0.3rem, 1vw, 0.5rem);
+            /* Mobile keyboard fixes */
+            -webkit-appearance: none;
+            -webkit-user-select: text;
+            resize: none;
         }
 
         .cursor {
@@ -507,6 +517,29 @@
             .skill-list li::before {
                 left: -0.8rem;
                 width: 0.8rem;
+            }
+            
+            .terminal-input {
+                font-size: 16px; /* Prevents zoom on iOS */
+                transform: translateZ(0); /* Force hardware acceleration */
+            }
+            
+            /* Prevent body scroll when input is focused */
+            body.input-focused {
+                position: fixed;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+            }
+            
+            /* Ensure terminal stays in place */
+            .terminal-container.input-focused {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                height: 100dvh;
             }
         }
 
@@ -851,8 +884,26 @@
             createMatrixBackground();
             
             const input = document.getElementById('terminalInput');
+            const body = document.body;
+            const terminalContainer = document.querySelector('.terminal-container');
+            
             input.addEventListener('keydown', handleKeyDown);
             input.addEventListener('input', handleInput);
+            
+            // Mobile keyboard handling
+            input.addEventListener('focus', () => {
+                // Add classes to prevent viewport changes on mobile
+                if (window.innerWidth <= 768) {
+                    body.classList.add('input-focused');
+                    terminalContainer.classList.add('input-focused');
+                }
+            });
+            
+            input.addEventListener('blur', () => {
+                // Remove classes when input loses focus
+                body.classList.remove('input-focused');
+                terminalContainer.classList.remove('input-focused');
+            });
             
             // Focus input when clicking anywhere on terminal
             document.addEventListener('click', () => {
