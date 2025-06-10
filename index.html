@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Jose M. Matas - Cybersecurity Terminal</title>
     
     <!-- Basic Security Headers -->
@@ -22,20 +22,20 @@
             font-family: 'JetBrains Mono', 'Courier New', monospace;
             background: #0a0a0a;
             color: #00ff41;
-            overflow: hidden;
-            height: 100vh;
-            height: 100dvh; /* Dynamic viewport - adapts to keyboard */
-            width: 100vw;
-            cursor: text;
-            font-size: clamp(0.85rem, 1.5vw, 1rem);
             margin: 0;
             padding: 0;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100svh; /* Small viewport height */
+            cursor: text;
+            font-size: clamp(0.85rem, 1.5vw, 1rem);
+            overflow-x: hidden;
         }
 
         .terminal-container {
-            height: 100vh;
-            height: 100dvh; /* Dynamic viewport - adapts to keyboard */
-            width: 100vw;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100svh; /* Small viewport height for mobile keyboards */
             display: flex;
             flex-direction: column;
             background: linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #111111 100%);
@@ -125,6 +125,7 @@
             flex: 1;
             padding: clamp(0.5rem, 2vw, 2rem);
             overflow-y: auto;
+            overflow-x: hidden;
             position: relative;
             z-index: 10;
             display: flex;
@@ -132,6 +133,9 @@
             width: 100%;
             box-sizing: border-box;
             min-height: 0;
+            /* Modern viewport handling */
+            height: calc(100vh - var(--header-height, 80px));
+            height: calc(100svh - var(--header-height, 80px));
         }
 
         .output-container {
@@ -210,7 +214,9 @@
             outline: none;
             flex: 1;
             padding: clamp(0.3rem, 1vw, 0.5rem);
+            /* Mobile keyboard fixes */
             -webkit-appearance: none;
+            -webkit-user-select: text;
             resize: none;
         }
 
@@ -430,13 +436,12 @@
         @media (max-width: 768px) {
             body {
                 font-size: clamp(0.75rem, 3.5vw, 0.9rem);
-                height: 100vh;
-                height: 100svh; /* Small viewport height - adapts to mobile keyboard */
             }
             
             .terminal-container {
-                height: 100vh;
-                height: 100svh; /* Small viewport height - adapts to mobile keyboard */
+                /* Use container-relative units for better responsiveness */
+                min-height: 100vh;
+                min-height: 100svh;
             }
             
             .terminal-header {
@@ -444,6 +449,7 @@
                 gap: 0.5rem;
                 text-align: center;
                 padding: 0.5rem;
+                --header-height: 100px;
             }
             
             .terminal-info {
@@ -453,6 +459,20 @@
             
             .terminal-body {
                 padding: 0.5rem;
+                /* Better mobile viewport handling */
+                height: calc(100vh - 100px);
+                height: calc(100svh - 100px);
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .terminal-input {
+                font-size: 16px; /* Prevents zoom on iOS */
+                transform: translateZ(0); /* Force hardware acceleration */
+                /* Better touch handling */
+                -webkit-appearance: none;
+                border-radius: 0;
+                background-color: transparent;
             }
             
             .skill-grid {
@@ -595,6 +615,39 @@
 
         .terminal-link:visited {
             color: #9370db;
+        }
+
+        /* Extra small mobile devices */
+        @media (max-width: 480px) {
+            .terminal-header {
+                padding: 0.25rem;
+                --header-height: 80px;
+            }
+            
+            .terminal-body {
+                padding: 0.25rem;
+                height: calc(100vh - 80px);
+                height: calc(100svh - 80px);
+            }
+            
+            .terminal-title {
+                font-size: 0.85rem;
+            }
+            
+            .terminal-info {
+                font-size: 0.7rem;
+            }
+            
+            .skill-grid {
+                margin: 0.25rem 0;
+                gap: 0.5rem;
+            }
+            
+            .project-card,
+            .timeline-item {
+                margin: 0.25rem 0;
+                padding: 0.5rem;
+            }
         }
     </style>
 </head>
@@ -835,6 +888,37 @@
             
             input.addEventListener('keydown', handleKeyDown);
             input.addEventListener('input', handleInput);
+            
+            // Modern mobile viewport handling using Visual Viewport API
+            if (window.visualViewport) {
+                const handleViewportChange = () => {
+                    const terminal = document.querySelector('.terminal-container');
+                    const currentHeight = window.visualViewport.height;
+                    const windowHeight = window.innerHeight;
+                    
+                    // Adjust only if there's a significant height change (keyboard opened/closed)
+                    if (currentHeight < windowHeight * 0.75) {
+                        // Keyboard is likely open
+                        terminal.style.height = currentHeight + 'px';
+                    } else {
+                        // Keyboard is likely closed
+                        terminal.style.height = '';
+                    }
+                };
+                
+                window.visualViewport.addEventListener('resize', handleViewportChange);
+                window.visualViewport.addEventListener('scroll', handleViewportChange);
+            }
+            
+            // Enhanced focus handling for mobile
+            input.addEventListener('focus', () => {
+                // Smooth scroll to input on mobile
+                if (window.innerWidth <= 768) {
+                    setTimeout(() => {
+                        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 300);
+                }
+            });
             
             // Focus input when clicking anywhere on terminal
             document.addEventListener('click', () => {
